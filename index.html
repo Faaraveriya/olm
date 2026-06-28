@@ -5,79 +5,134 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>OLM Mission Control</title>
 
-<!-- PWA / home-screen app appearance -->
 <meta name="theme-color" content="#04183A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OLM Mission Control">
 <link rel="manifest" href="manifest.json">
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <style>
+  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4; }
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
-    background: #04183A; overflow: hidden;
+    background: var(--navy); overflow: hidden;
     -webkit-tap-highlight-color: transparent;
-  }
-  /* The frame fills the whole screen, edge to edge, including under the
-     iPhone notch/home-bar (handled by viewport-fit=cover above). */
-  #app {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    border: 0;
-  }
-  /* Navy splash shown until the app inside the frame finishes loading. */
-  #splash {
-    position: fixed; inset: 0;
-    background: #04183A; color: #fff;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 18px; z-index: 10;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    transition: opacity 0.4s ease;
   }
-  #splash.hide { opacity: 0; pointer-events: none; }
-  #splash .logo {
+  #login {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; z-index: 5;
+  }
+  .card {
+    background: var(--navy-2);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 18px;
+    max-width: 360px; width: 100%;
+    padding: 34px 26px; text-align: center;
+    box-shadow: 0 12px 44px rgba(0,0,0,.4);
+  }
+  .logo {
     width: 72px; height: 72px; border-radius: 18px;
-    background: #0A56C4;
+    background: var(--blue);
+    margin: 0 auto 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 26px; letter-spacing: 1px; color: #fff;
+  }
+  h1 { color: #fff; font-size: 21px; margin: 0 0 6px; }
+  .sub { color: #9FB3D4; font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+  #gbtn { display: flex; justify-content: center; min-height: 44px; }
+  .hint { color: #6B7B97; font-size: 12px; margin-top: 18px; line-height: 1.5; }
+
+  #app {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%; border: 0;
+    display: none; z-index: 1;
+  }
+  #splash {
+    position: fixed; inset: 0; background: var(--navy); color: #fff;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; z-index: 3;
+  }
+  #splash .logo2 {
+    width: 72px; height: 72px; border-radius: 18px; background: var(--blue);
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 26px; letter-spacing: 1px;
   }
   #splash .name { font-size: 16px; font-weight: 600; opacity: 0.92; }
-  #splash .spin {
-    width: 30px; height: 30px;
-    border: 3px solid rgba(255,255,255,0.25);
-    border-top-color: #fff; border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
-  <!-- Splash overlay (hidden once the framed app loads) -->
-  <div id="splash">
-    <div class="logo">OLM</div>
-    <div class="name">OLM Mission Control</div>
-    <div class="spin"></div>
+  <div id="login">
+    <div class="card">
+      <div class="logo">OLM</div>
+      <h1>OLM Mission Control</h1>
+      <div class="sub">OZEN Life Maadhoo &middot; Security<br>Sign in to continue.</div>
+      <div id="gbtn"></div>
+      <div class="hint">Use your authorised Google account. If you can't get in, contact the Security Manager for access.</div>
+    </div>
   </div>
 
-  <!-- The real app, framed full-screen.
-       REPLACE the src below ONLY IF your /exec URL ever changes. -->
-  <iframe
-    id="app"
-    src="https://script.google.com/macros/s/AKfycbyV2PjkBJNVNoAAVTP6B2_lVxvTOMBcDYM2Ww5l4NUienOtBXngeDPiTIAE3s7q-Au-/exec"
+  <div id="splash">
+    <div class="logo2">OLM</div>
+    <div class="name">Loading&hellip;</div>
+  </div>
+
+  <iframe id="app"
     allow="clipboard-read; clipboard-write"
-    referrerpolicy="no-referrer-when-downgrade">
-  </iframe>
+    referrerpolicy="no-referrer-when-downgrade"></iframe>
 
   <script>
-    // Hide the splash once the framed app has loaded (or after a 6s safety timeout).
-    var splash = document.getElementById('splash');
-    var frame  = document.getElementById('app');
-    function hideSplash(){ if(splash) splash.classList.add('hide'); }
-    if (frame) frame.addEventListener('load', function(){ setTimeout(hideSplash, 400); });
-    setTimeout(hideSplash, 6000);
+    // ===================== CONFIG =====================
+    var CLIENT_ID = '349793034127-d8kpprubbnhggsmiucndbeaeemmoa374.apps.googleusercontent.com';
+    var EXEC_URL  = 'https://script.google.com/macros/s/AKfycbyV2PjkBJNVNoAAVTP6B2_lVxvTOMBcDYM2Ww5l4NUienOtBXngeDPiTIAE3s7q-Au-/exec';
+    // ==================================================
+
+    function parseJwt(token){
+      try{
+        var base64Url = token.split('.')[1];
+        var base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+        var json = decodeURIComponent(atob(base64).split('').map(function(c){
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(json);
+      }catch(e){ return {}; }
+    }
+
+    function handleCredential(response){
+      var data = parseJwt(response.credential);
+      var email = (data && data.email) ? data.email : '';
+      if(!email){ return; }
+      var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
+      var url = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('splash').style.display = 'flex';
+      var frame = document.getElementById('app');
+      frame.style.display = 'block';
+      frame.src = url;
+      frame.addEventListener('load', function(){
+        var s = document.getElementById('splash');
+        if(s) setTimeout(function(){ s.style.display='none'; }, 400);
+      });
+    }
+
+    function initGoogle(){
+      if(!(window.google && google.accounts && google.accounts.id)){
+        setTimeout(initGoogle, 150); return;
+      }
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredential
+      });
+      google.accounts.id.renderButton(
+        document.getElementById('gbtn'),
+        { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', width:260 }
+      );
+    }
+    initGoogle();
   </script>
 
 </body>
