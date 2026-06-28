@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>OLM Mission Control</title>
+
+<!-- PWA / home-screen app appearance -->
+<meta name="theme-color" content="#04183A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OLM Mission Control">
+<link rel="manifest" href="manifest.json">
+
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #04183A; overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* The frame fills the whole screen, edge to edge, including under the
+     iPhone notch/home-bar (handled by viewport-fit=cover above). */
+  #app {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    border: 0;
+  }
+  /* Navy splash shown until the app inside the frame finishes loading. */
+  #splash {
+    position: fixed; inset: 0;
+    background: #04183A; color: #fff;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 18px; z-index: 10;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    transition: opacity 0.4s ease;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash .logo {
+    width: 72px; height: 72px; border-radius: 18px;
+    background: #0A56C4;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 26px; letter-spacing: 1px;
+  }
+  #splash .name { font-size: 16px; font-weight: 600; opacity: 0.92; }
+  #splash .spin {
+    width: 30px; height: 30px;
+    border: 3px solid rgba(255,255,255,0.25);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+  <!-- Splash overlay (hidden once the framed app loads) -->
+  <div id="splash">
+    <div class="logo">OLM</div>
+    <div class="name">OLM Mission Control</div>
+    <div class="spin"></div>
+  </div>
+
+  <!-- The real app, framed full-screen.
+       REPLACE the src below ONLY IF your /exec URL ever changes. -->
+  <iframe
+    id="app"
+    src="https://script.google.com/macros/s/AKfycbyV2PjkBJNVNoAAVTP6B2_lVxvTOMBcDYM2Ww5l4NUienOtBXngeDPiTIAE3s7q-Au-/exec"
+    allow="clipboard-read; clipboard-write"
+    referrerpolicy="no-referrer-when-downgrade">
+  </iframe>
+
+  <script>
+    // Hide the splash once the framed app has loaded (or after a 6s safety timeout).
+    var splash = document.getElementById('splash');
+    var frame  = document.getElementById('app');
+    function hideSplash(){ if(splash) splash.classList.add('hide'); }
+    if (frame) frame.addEventListener('load', function(){ setTimeout(hideSplash, 400); });
+    setTimeout(hideSplash, 6000);
+  </script>
+
+</body>
+</html>
