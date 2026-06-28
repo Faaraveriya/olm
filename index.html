@@ -75,7 +75,6 @@
 </head>
 <body>
 
-  <!-- SIGN-IN (hidden unless we actually need it) -->
   <div id="login">
     <div class="card">
       <div class="logo">OLM</div>
@@ -86,7 +85,6 @@
     </div>
   </div>
 
-  <!-- SPLASH (shown on launch while we decide / load) -->
   <div id="splash">
     <div class="logo2">OLM</div>
     <div class="name">Loading&hellip;</div>
@@ -105,6 +103,7 @@
     var STORE_KEY = 'olm_gmail';
     // ==================================================
 
+    function el(id){ return document.getElementById(id); }
     function parseJwt(token){
       try{
         var b = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
@@ -114,86 +113,59 @@
         return JSON.parse(json);
       }catch(e){ return {}; }
     }
+    function saveEmail(e){ try{ localStorage.setItem(STORE_KEY, e); }catch(x){} }
+    function loadEmail(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(x){ return ''; } }
 
-    function saveEmail(email){ try{ localStorage.setItem(STORE_KEY, email); }catch(e){} }
-    function loadEmail(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(e){ return ''; } }
-
-    function el(id){ return document.getElementById(id); }
-
-    // Load the app for a known email. ALWAYS starts at Home (no &page=), so a
-    // cold start never jumps to a leftover page.
+    // Load the app for a known email. ALWAYS opens at Home.
     function showApp(email){
       saveEmail(email);
       var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
-      var url = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
       el('login').style.display = 'none';
       el('splash').style.display = 'flex';
       var frame = el('app');
       el('appwrap').style.display = 'block';
-      frame.src = url;
+      frame.src = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
       frame.addEventListener('load', function(){
         setTimeout(function(){ el('splash').style.display='none'; }, 350);
       });
     }
 
-    // Show the sign-in card (only when we have no remembered account and Google
-    // couldn't sign us in silently).
+    // Show the one-time sign-in button. NO Google One-Tap / prompt banner.
     function showLogin(){
       el('splash').style.display = 'none';
       el('appwrap').style.display = 'none';
       el('login').style.display = 'flex';
+      renderButton();
     }
 
-    // Google calls this after any sign-in (button OR silent auto).
+    // Called only when the user taps the button the first time.
     function handleCredential(response){
       var data = parseJwt(response.credential);
       var email = (data && data.email) ? data.email : '';
       if(email){ showApp(email); }
-      else { showLogin(); }
     }
 
     function renderButton(){
       if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(renderButton,150); return; }
+      // Initialise WITHOUT auto_select and WITHOUT prompt() -> no banner.
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredential
+      });
       google.accounts.id.renderButton(
         el('gbtn'),
         { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', width:260 }
       );
     }
 
-    function startGoogle(){
-      if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(startGoogle,150); return; }
-      google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredential,
-        auto_select: true,           // silently re-sign-in the returning user
-        itp_support: true
-      });
-      // Try a silent return-sign-in. If it can't (first time / revoked), show
-      // the button so they can tap once.
-      google.accounts.id.prompt(function(notif){
-        try{
-          if(notif.isNotDisplayed() || notif.isSkippedMoment() || notif.isDismissedMoment()){
-            renderButton();
-            showLogin();
-          }
-        }catch(e){ renderButton(); showLogin(); }
-      });
-    }
-
     // ── LAUNCH ──
+    // If we already know this officer (saved on first sign-in), go STRAIGHT in.
+    // No Google check, no banner, no re-prompt. Only first-ever launch (or after
+    // a manual sign-out / storage wipe) shows the button.
     (function(){
       var saved = loadEmail();
-      if(saved){
-        // We remember this officer -> go straight in, no login screen.
-        showApp(saved);
-        // Quietly refresh Google auth in the background (keeps it valid) but
-        // don't block the app on it.
-        startGoogle();
-      } else {
-        // No memory yet -> try silent Google, else show the button.
-        startGoogle();
-        renderButton();
-      }
+      if(saved){ showApp(saved); }
+      else { showLogin(); }
     })();
   </script>
 
