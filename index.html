@@ -4,12 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>OLM Mission Control</title>
-
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#04183A">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="OLM Mission Control">
-<link rel="manifest" href="manifest.json">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -116,7 +113,6 @@
     function saveEmail(e){ try{ localStorage.setItem(STORE_KEY, e); }catch(x){} }
     function loadEmail(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(x){ return ''; } }
 
-    // Load the app for a known email. ALWAYS opens at Home.
     function showApp(email){
       saveEmail(email);
       var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
@@ -130,7 +126,6 @@
       });
     }
 
-    // Show the one-time sign-in button. NO Google One-Tap / prompt banner.
     function showLogin(){
       el('splash').style.display = 'none';
       el('appwrap').style.display = 'none';
@@ -138,7 +133,6 @@
       renderButton();
     }
 
-    // Called only when the user taps the button the first time.
     function handleCredential(response){
       var data = parseJwt(response.credential);
       var email = (data && data.email) ? data.email : '';
@@ -147,7 +141,6 @@
 
     function renderButton(){
       if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(renderButton,150); return; }
-      // Initialise WITHOUT auto_select and WITHOUT prompt() -> no banner.
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredential
@@ -158,10 +151,6 @@
       );
     }
 
-    // ── LAUNCH ──
-    // If we already know this officer (saved on first sign-in), go STRAIGHT in.
-    // No Google check, no banner, no re-prompt. Only first-ever launch (or after
-    // a manual sign-out / storage wipe) shows the button.
     (function(){
       var saved = loadEmail();
       if(saved){ showApp(saved); }
