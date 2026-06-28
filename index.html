@@ -11,7 +11,7 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4; --gbar: 38px; }
+  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4; }
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
     background: var(--navy); overflow: hidden;
@@ -42,21 +42,6 @@
   #gbtn { display: flex; justify-content: center; min-height: 44px; }
   .hint { color: #6B7B97; font-size: 12px; margin-top: 18px; line-height: 1.5; }
 
-  #appwrap {
-    position: fixed; left: 0; right: 0;
-    top: env(safe-area-inset-top, 0px);
-    bottom: 0;
-    background: var(--navy);
-    overflow: hidden;
-    display: none; z-index: 1;
-  }
-  #app {
-    position: absolute;
-    left: 0; width: 100%;
-    top: calc(-1 * var(--gbar));
-    height: calc(100% + var(--gbar) + env(safe-area-inset-bottom, 0px));
-    border: 0;
-  }
   #splash {
     position: fixed; inset: 0; background: var(--navy); color: #fff;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -68,6 +53,13 @@
     font-weight: 700; font-size: 26px; letter-spacing: 1px;
   }
   #splash .name { font-size: 16px; font-weight: 600; opacity: 0.92; }
+  .spin {
+    width: 26px; height: 26px;
+    border: 3px solid rgba(255,255,255,0.25);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -84,13 +76,8 @@
 
   <div id="splash">
     <div class="logo2">OLM</div>
-    <div class="name">Loading&hellip;</div>
-  </div>
-
-  <div id="appwrap">
-    <iframe id="app"
-      allow="clipboard-read; clipboard-write"
-      referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div class="name">Opening&hellip;</div>
+    <div class="spin"></div>
   </div>
 
   <script>
@@ -113,22 +100,16 @@
     function saveEmail(e){ try{ localStorage.setItem(STORE_KEY, e); }catch(x){} }
     function loadEmail(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(x){ return ''; } }
 
-    function showApp(email){
+    function goToApp(email){
       saveEmail(email);
       var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
       el('login').style.display = 'none';
       el('splash').style.display = 'flex';
-      var frame = el('app');
-      el('appwrap').style.display = 'block';
-      frame.src = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
-      frame.addEventListener('load', function(){
-        setTimeout(function(){ el('splash').style.display='none'; }, 350);
-      });
+      window.location.replace(EXEC_URL + sep + 'gmail=' + encodeURIComponent(email));
     }
 
     function showLogin(){
       el('splash').style.display = 'none';
-      el('appwrap').style.display = 'none';
       el('login').style.display = 'flex';
       renderButton();
     }
@@ -136,7 +117,7 @@
     function handleCredential(response){
       var data = parseJwt(response.credential);
       var email = (data && data.email) ? data.email : '';
-      if(email){ showApp(email); }
+      if(email){ goToApp(email); }
     }
 
     function renderButton(){
@@ -153,7 +134,7 @@
 
     (function(){
       var saved = loadEmail();
-      if(saved){ showApp(saved); }
+      if(saved){ goToApp(saved); }
       else { showLogin(); }
     })();
   </script>
