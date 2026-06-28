@@ -14,20 +14,16 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4;
-         /* Height of Google's grey "created by another user" bar to clip off. */
-         --gbar: 38px; }
+  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4; --gbar: 38px; }
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
     background: var(--navy); overflow: hidden;
     -webkit-tap-highlight-color: transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
-
-  /* ── SIGN-IN SCREEN ── */
   #login {
     position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
+    display: none; align-items: center; justify-content: center;
     padding: 24px; z-index: 5;
   }
   .card {
@@ -49,10 +45,6 @@
   #gbtn { display: flex; justify-content: center; min-height: 44px; }
   .hint { color: #6B7B97; font-size: 12px; margin-top: 18px; line-height: 1.5; }
 
-  /* ── APP FRAME (after sign-in) ──
-     A clipping window: it starts below the iPhone notch (safe-area top) and
-     fills to the bottom safe area. Inside it, the iframe is pulled UP by
-     --gbar so Google's grey bar is hidden above the visible area. */
   #appwrap {
     position: fixed; left: 0; right: 0;
     top: env(safe-area-inset-top, 0px);
@@ -64,16 +56,13 @@
   #app {
     position: absolute;
     left: 0; width: 100%;
-    /* pull the frame up so the grey bar sits above the clip window */
     top: calc(-1 * var(--gbar));
-    /* make the frame tall enough to still fill the window after being pulled up,
-       plus the bottom safe area so there's no blank strip */
     height: calc(100% + var(--gbar) + env(safe-area-inset-bottom, 0px));
     border: 0;
   }
   #splash {
     position: fixed; inset: 0; background: var(--navy); color: #fff;
-    display: none; flex-direction: column; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 18px; z-index: 3;
   }
   #splash .logo2 {
@@ -86,6 +75,7 @@
 </head>
 <body>
 
+  <!-- SIGN-IN (hidden unless we actually need it) -->
   <div id="login">
     <div class="card">
       <div class="logo">OLM</div>
@@ -96,6 +86,7 @@
     </div>
   </div>
 
+  <!-- SPLASH (shown on launch while we decide / load) -->
   <div id="splash">
     <div class="logo2">OLM</div>
     <div class="name">Loading&hellip;</div>
@@ -111,66 +102,98 @@
     // ===================== CONFIG =====================
     var CLIENT_ID = '349793034127-d8kpprubbnhggsmiucndbeaeemmoa374.apps.googleusercontent.com';
     var EXEC_URL  = 'https://script.google.com/macros/s/AKfycbyV2PjkBJNVNoAAVTP6B2_lVxvTOMBcDYM2Ww5l4NUienOtBXngeDPiTIAE3s7q-Au-/exec';
+    var STORE_KEY = 'olm_gmail';
     // ==================================================
 
     function parseJwt(token){
       try{
-        var base64Url = token.split('.')[1];
-        var base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
-        var json = decodeURIComponent(atob(base64).split('').map(function(c){
+        var b = token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+        var json = decodeURIComponent(atob(b).split('').map(function(c){
           return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         return JSON.parse(json);
       }catch(e){ return {}; }
     }
 
+    function saveEmail(email){ try{ localStorage.setItem(STORE_KEY, email); }catch(e){} }
+    function loadEmail(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(e){ return ''; } }
+
+    function el(id){ return document.getElementById(id); }
+
+    // Load the app for a known email. ALWAYS starts at Home (no &page=), so a
+    // cold start never jumps to a leftover page.
     function showApp(email){
+      saveEmail(email);
       var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
       var url = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('splash').style.display = 'flex';
-      var wrap = document.getElementById('appwrap');
-      var frame = document.getElementById('app');
-      wrap.style.display = 'block';
+      el('login').style.display = 'none';
+      el('splash').style.display = 'flex';
+      var frame = el('app');
+      el('appwrap').style.display = 'block';
       frame.src = url;
       frame.addEventListener('load', function(){
-        var s = document.getElementById('splash');
-        if(s) setTimeout(function(){ s.style.display='none'; }, 400);
+        setTimeout(function(){ el('splash').style.display='none'; }, 350);
       });
-      // Remember the signed-in email so a Back press / reload keeps the session
-      // instead of dropping to the sign-in screen.
-      try { sessionStorage.setItem('olm_gmail', email); } catch(e){}
     }
 
+    // Show the sign-in card (only when we have no remembered account and Google
+    // couldn't sign us in silently).
+    function showLogin(){
+      el('splash').style.display = 'none';
+      el('appwrap').style.display = 'none';
+      el('login').style.display = 'flex';
+    }
+
+    // Google calls this after any sign-in (button OR silent auto).
     function handleCredential(response){
       var data = parseJwt(response.credential);
       var email = (data && data.email) ? data.email : '';
-      if(!email){ return; }
-      showApp(email);
+      if(email){ showApp(email); }
+      else { showLogin(); }
     }
 
-    function initGoogle(){
-      if(!(window.google && google.accounts && google.accounts.id)){
-        setTimeout(initGoogle, 150); return;
-      }
-      google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredential,
-        auto_select: true
-      });
+    function renderButton(){
+      if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(renderButton,150); return; }
       google.accounts.id.renderButton(
-        document.getElementById('gbtn'),
+        el('gbtn'),
         { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', width:260 }
       );
     }
 
-    // On load: if we already signed in this session, go straight back into the
-    // app (fixes "press Back -> logged out"). Otherwise show the sign-in button.
+    function startGoogle(){
+      if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(startGoogle,150); return; }
+      google.accounts.id.initialize({
+        client_id: CLIENT_ID,
+        callback: handleCredential,
+        auto_select: true,           // silently re-sign-in the returning user
+        itp_support: true
+      });
+      // Try a silent return-sign-in. If it can't (first time / revoked), show
+      // the button so they can tap once.
+      google.accounts.id.prompt(function(notif){
+        try{
+          if(notif.isNotDisplayed() || notif.isSkippedMoment() || notif.isDismissedMoment()){
+            renderButton();
+            showLogin();
+          }
+        }catch(e){ renderButton(); showLogin(); }
+      });
+    }
+
+    // ── LAUNCH ──
     (function(){
-      var saved = '';
-      try { saved = sessionStorage.getItem('olm_gmail') || ''; } catch(e){}
-      if(saved){ showApp(saved); }
-      initGoogle();
+      var saved = loadEmail();
+      if(saved){
+        // We remember this officer -> go straight in, no login screen.
+        showApp(saved);
+        // Quietly refresh Google auth in the background (keeps it valid) but
+        // don't block the app on it.
+        startGoogle();
+      } else {
+        // No memory yet -> try silent Google, else show the button.
+        startGoogle();
+        renderButton();
+      }
     })();
   </script>
 
