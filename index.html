@@ -14,13 +14,17 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4; }
+  :root{ --navy:#04183A; --navy-2:#0A2540; --blue:#0A56C4;
+         /* Height of Google's grey "created by another user" bar to clip off. */
+         --gbar: 38px; }
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
     background: var(--navy); overflow: hidden;
     -webkit-tap-highlight-color: transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+
+  /* ── SIGN-IN SCREEN ── */
   #login {
     position: fixed; inset: 0;
     display: flex; align-items: center; justify-content: center;
@@ -35,8 +39,7 @@
     box-shadow: 0 12px 44px rgba(0,0,0,.4);
   }
   .logo {
-    width: 72px; height: 72px; border-radius: 18px;
-    background: var(--blue);
+    width: 72px; height: 72px; border-radius: 18px; background: var(--blue);
     margin: 0 auto 18px;
     display: flex; align-items: center; justify-content: center;
     font-weight: 700; font-size: 26px; letter-spacing: 1px; color: #fff;
@@ -46,10 +49,27 @@
   #gbtn { display: flex; justify-content: center; min-height: 44px; }
   .hint { color: #6B7B97; font-size: 12px; margin-top: 18px; line-height: 1.5; }
 
-  #app {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%; border: 0;
+  /* ── APP FRAME (after sign-in) ──
+     A clipping window: it starts below the iPhone notch (safe-area top) and
+     fills to the bottom safe area. Inside it, the iframe is pulled UP by
+     --gbar so Google's grey bar is hidden above the visible area. */
+  #appwrap {
+    position: fixed; left: 0; right: 0;
+    top: env(safe-area-inset-top, 0px);
+    bottom: 0;
+    background: var(--navy);
+    overflow: hidden;
     display: none; z-index: 1;
+  }
+  #app {
+    position: absolute;
+    left: 0; width: 100%;
+    /* pull the frame up so the grey bar sits above the clip window */
+    top: calc(-1 * var(--gbar));
+    /* make the frame tall enough to still fill the window after being pulled up,
+       plus the bottom safe area so there's no blank strip */
+    height: calc(100% + var(--gbar) + env(safe-area-inset-bottom, 0px));
+    border: 0;
   }
   #splash {
     position: fixed; inset: 0; background: var(--navy); color: #fff;
@@ -81,9 +101,11 @@
     <div class="name">Loading&hellip;</div>
   </div>
 
-  <iframe id="app"
-    allow="clipboard-read; clipboard-write"
-    referrerpolicy="no-referrer-when-downgrade"></iframe>
+  <div id="appwrap">
+    <iframe id="app"
+      allow="clipboard-read; clipboard-write"
+      referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </div>
 
   <script>
     // ===================== CONFIG =====================
@@ -102,21 +124,29 @@
       }catch(e){ return {}; }
     }
 
-    function handleCredential(response){
-      var data = parseJwt(response.credential);
-      var email = (data && data.email) ? data.email : '';
-      if(!email){ return; }
+    function showApp(email){
       var sep = (EXEC_URL.indexOf('?') > -1) ? '&' : '?';
       var url = EXEC_URL + sep + 'gmail=' + encodeURIComponent(email);
       document.getElementById('login').style.display = 'none';
       document.getElementById('splash').style.display = 'flex';
+      var wrap = document.getElementById('appwrap');
       var frame = document.getElementById('app');
-      frame.style.display = 'block';
+      wrap.style.display = 'block';
       frame.src = url;
       frame.addEventListener('load', function(){
         var s = document.getElementById('splash');
         if(s) setTimeout(function(){ s.style.display='none'; }, 400);
       });
+      // Remember the signed-in email so a Back press / reload keeps the session
+      // instead of dropping to the sign-in screen.
+      try { sessionStorage.setItem('olm_gmail', email); } catch(e){}
+    }
+
+    function handleCredential(response){
+      var data = parseJwt(response.credential);
+      var email = (data && data.email) ? data.email : '';
+      if(!email){ return; }
+      showApp(email);
     }
 
     function initGoogle(){
@@ -125,14 +155,23 @@
       }
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
-        callback: handleCredential
+        callback: handleCredential,
+        auto_select: true
       });
       google.accounts.id.renderButton(
         document.getElementById('gbtn'),
         { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', width:260 }
       );
     }
-    initGoogle();
+
+    // On load: if we already signed in this session, go straight back into the
+    // app (fixes "press Back -> logged out"). Otherwise show the sign-in button.
+    (function(){
+      var saved = '';
+      try { saved = sessionStorage.getItem('olm_gmail') || ''; } catch(e){}
+      if(saved){ showApp(saved); }
+      initGoogle();
+    })();
   </script>
 
 </body>
