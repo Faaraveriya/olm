@@ -107,7 +107,7 @@
   function ask(body, ms){
     var timer, done=false;
     return new Promise(function(resolve){
-      timer=setTimeout(function(){ if(!done){ done=true; resolve({ ok:false, reason:'network' }); } }, ms||15000);
+      timer=setTimeout(function(){ if(!done){ done=true; resolve({ ok:false, reason:'network' }); } }, ms||30000);
       fetch(EXEC_URL, { method:'POST', body:JSON.stringify(body) })
         .then(function(r){ return r.json(); })
         .then(function(j){ if(!done){ done=true; clearTimeout(timer); resolve(j||{ ok:false, reason:'error' }); } })
@@ -150,11 +150,27 @@
     google.accounts.id.renderButton(el('gbtn'), { theme:'outline', size:'large', shape:'rectangular', text:'signin_with', logo_alignment:'left', width:w });
     rendered=true;
   }
+  // On a phone, Google's sign-in tab can stay in front, so this page is in the
+  // background when it sends the sign-in to the app — and phones pause background
+  // pages, cutting the request off. So the Google sign-in (valid for an hour) is kept
+  // and re-sent: as soon as the page is back in front, and up to 3 tries in all.
+  var cred=null, tries=0;
   function onGoogle(resp){
+    cred=resp && resp.credential; tries=0; sendGoogle();
+  }
+  function sendGoogle(){
+    if(!cred) return;
+    tries++;
     el('login').style.display='none'; el('splash').style.display='flex';
-    ask({ act:'google', credential:resp && resp.credential }).then(function(r){
-      if(r && r.ok && r.k){ store(r.k); openApp(r.k); }
-      else showLogin('google', msgFor(r), 'bad');
+    ask({ act:'google', credential:cred }).then(function(r){
+      if(r && r.ok && r.k){ cred=null; store(r.k); openApp(r.k); return; }
+      if(r && r.reason==='network' && tries<3){
+        if(document.hidden) document.addEventListener('visibilitychange', function again(){
+          if(document.hidden) return; document.removeEventListener('visibilitychange', again); sendGoogle(); });
+        else setTimeout(sendGoogle, 1500);
+        return;
+      }
+      cred=null; showLogin('google', msgFor(r), 'bad');
     });
   }
 
