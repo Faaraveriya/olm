@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>OLM NEXUS TEST</title>
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#1B1F16">
+<meta name="apple-mobile-web-app-title" content="OLM NEXUS">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  /* Nexus V2 tokens (NEXUS-DESIGN-LANGUAGE V2 §3) */
+  :root{--chrome:#1B1F16;--bg:#F2F2EE;--bg-2:#EAEAE4;--card:#FFFFFF;--line:#DBDBD3;--ink:#1A1C18;--ink-2:#3C4038;--muted:#5F6359;--muted-2:#7A7E74;--disabled:#9A9E93;
+    --accent:#C8891B;--accent-press:#A87013;--accent-wash:#FBF3E2;--accent-line:#EBD3A2;--accent-ink:#7A5410;--on-accent:#1A1C18;
+    --bad-fill:#FBEAE8;--bad-line:#E0B3AE;--bad-ink:#7E241C;--bad-solid:#A32118;
+    --font:Archivo,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --ctl:42px;--ctl-lg:48px;--radius:8px;--radius-sm:6px;--focus:0 0 0 3px rgba(200,137,27,.35);--press:inset 0 2px 4px rgba(0,0,0,.22)}
+  @media(min-width:768px){:root{--ctl:40px;--ctl-lg:44px}}
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;height:100%;width:100%;background:var(--bg);color:var(--ink);font:400 14px/1.45 var(--font);-webkit-tap-highlight-color:transparent;overflow:hidden}
+  #login{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);width:100%;max-width:360px;padding:24px 20px 20px;margin:auto}
+  .brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;text-align:center}
+  .mark{width:56px;height:56px;border-radius:10px;background:var(--accent);color:var(--on-accent);display:flex;align-items:center;justify-content:center;font:800 18px var(--font);letter-spacing:.5px}
+  .name{font:800 22px/1.1 var(--font);letter-spacing:.06em;color:var(--ink)}
+  .place{font:400 13px var(--font);color:var(--muted)}
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .flabel{font:600 10px var(--font);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-4px}
+  #code{width:100%;height:var(--ctl);padding:0 12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);font:600 18px var(--mono);letter-spacing:.3em;text-align:center;text-transform:uppercase;outline:none}
+  #code::placeholder{font:400 14px var(--font);letter-spacing:0;color:var(--muted);text-transform:none}
+  #code:focus{border-color:var(--accent);box-shadow:var(--focus)}
+  #code.bad{border-color:var(--bad-solid)}
+  #code:disabled{opacity:.5}
+  .btn{width:100%;height:var(--ctl);padding:0 16px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 14px var(--font);display:flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btn:active{background:var(--bg-2);border-color:#CFCFC5;transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(0,0,0,.10)}
+  .btn.primary{height:var(--ctl-lg);background:var(--accent);border-color:transparent;color:var(--on-accent);font-size:15px;font-weight:700}
+  .btn.primary:active,.btn.primary.working{background:var(--accent-press);transform:translateY(1px);box-shadow:var(--press)}
+  .btn.primary.working{cursor:progress}
+  .btn[disabled]:not(.working){background:var(--bg-2);border-color:#E4E4DC;color:var(--disabled);transform:none;box-shadow:none;cursor:default}
+  .btn:focus-visible{outline:none;box-shadow:var(--focus)}
+  .btn.fail{animation:shake .35s}
+  @keyframes shake{20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
+  .spinner{width:15px;height:15px;border-radius:50%;border:2px solid rgba(26,28,24,.30);border-top-color:currentColor;animation:spin .7s linear infinite;flex-shrink:0}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #gbtn{display:flex;justify-content:center;min-height:40px}
+  .panel{font:400 13px/1.45 var(--font);padding:10px 12px;border-radius:var(--radius-sm);border:1px solid;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .panel.bad{background:var(--bad-fill);border-color:var(--bad-line);color:var(--bad-ink)}
+  .panel.note{background:var(--accent-wash);border-color:var(--accent-line);color:var(--accent-ink)}
+  .panel .em{font-family:var(--mono);font-weight:600;word-break:break-all}
+  .hint{font:400 12px/1.45 var(--font);color:var(--muted-2);text-align:center;margin-top:14px}
+  .hide{display:none!important}
+  #splash{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  #splash .sp{width:38px;height:38px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  #splash .txt{font:600 13px var(--font);color:var(--muted)}
+</style>
+</head>
+<body>
+
+  <div id="splash"><div class="mark">OLM</div><div class="sp"></div><div class="txt">Opening…</div></div>
+
+  <div id="login">
+    <div class="card">
+      <div class="brand"><div class="mark">OLM</div><div class="name">NEXUS</div><div class="place">TEST &middot; not for officers</div></div>
+
+      <!-- Google sign-in -->
+      <div class="stack" id="vGoogle">
+        <div class="panel hide" id="gMsg"></div>
+        <div id="gbtn"></div>
+        <button type="button" class="btn" id="toCode">Use a backup code</button>
+      </div>
+
+      <!-- Backup code -->
+      <div class="stack hide" id="vCode">
+        <div class="panel bad hide" id="cMsg"></div>
+        <div class="flabel">Backup code</div>
+        <input id="code" maxlength="8" placeholder="6 characters, e.g. K7QM2P" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text">
+        <button type="button" class="btn primary" id="go" disabled>Continue</button>
+        <button type="button" class="btn" id="toGoogle">Back to Google sign-in</button>
+      </div>
+
+      <div class="hint">Can't get in? Contact the Security Manager.</div>
+    </div>
+  </div>
+
+<script>
+  // ===================== CONFIG =====================
+  var CLIENT_ID = '349793034127-d8kpprubbnhggsmiucndbeaeemmoa374.apps.googleusercontent.com';
+  var EXEC_URL  = 'https://script.google.com/macros/s/AKfycbzQWAfJ8KHkg56DKTIgpcb8FZMrXe78Td61oxdw-xOx_-w9y2J3g9cDHGknHsYB00FS/exec';   // TEST deployment @625
+  var STORE_KEY = 'olm_key_test';   // separate from the real page's key
+  // ==================================================
+  // How it works: the first time on a phone, Google sign-in (or a backup code) is sent
+  // to the app, which checks it and replies with a sign-in key. The phone keeps the key
+  // and opens the app with it from then on — no sign-in again while it's used. If the
+  // app says the key is no longer valid (access switched off), the key is dropped and
+  // the sign-in card shows.
+
+  function el(id){ return document.getElementById(id); }
+  function show(id, on){ el(id).classList.toggle('hide', !on); }
+  function store(k){ try{ if(k) localStorage.setItem(STORE_KEY, k); else localStorage.removeItem(STORE_KEY); }catch(e){} }
+  function stored(){ try{ return localStorage.getItem(STORE_KEY) || ''; }catch(e){ return ''; } }
+
+  // POST to the app. Plain-text body = no CORS preflight. Resolves to the app's JSON
+  // reply, or { ok:false, reason:'network' } when there's no answer.
+  function ask(body, ms){
+    var timer, done=false;
+    return new Promise(function(resolve){
+      timer=setTimeout(function(){ if(!done){ done=true; resolve({ ok:false, reason:'network' }); } }, ms||15000);
+      fetch(EXEC_URL, { method:'POST', body:JSON.stringify(body) })
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(!done){ done=true; clearTimeout(timer); resolve(j||{ ok:false, reason:'error' }); } })
+        .catch(function(){ if(!done){ done=true; clearTimeout(timer); resolve({ ok:false, reason:'network' }); } });
+    });
+  }
+
+  function openApp(k){
+    el('login').style.display='none'; el('splash').style.display='flex';
+    window.location.replace(EXEC_URL + '?k=' + encodeURIComponent(k));
+  }
+
+  function showLogin(view, msg, kind){
+    el('splash').style.display='none'; el('login').style.display='flex';
+    var g=(view!=='code');
+    show('vGoogle', g); show('vCode', !g);
+    var box=el(g ? 'gMsg' : 'cMsg');
+    if(msg){ box.className='panel '+(kind||'bad'); box.innerHTML=msg; } else { box.className='panel hide'; box.innerHTML=''; }
+    if(g) renderButton(); else setTimeout(function(){ try{ el('code').focus(); }catch(e){} }, 50);
+  }
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  var MSG = {
+    notauth:  function(r){ return '<span class="em">'+esc(r.email||'This account')+'</span> isn\'t authorised for OLM NEXUS. Try another Google account.'; },
+    badproof: function(){ return 'Google sign-in couldn\'t be confirmed. Try again.'; },
+    network:  function(){ return 'No answer from the app. Check the signal and try again.'; },
+    error:    function(){ return 'Something went wrong. Try again.'; },
+    badcode:  function(){ return 'That code isn\'t recognised, or access for it is switched off.'; },
+    locked:   function(){ return 'Too many wrong codes. Wait 10 minutes, or sign in with Google.'; }
+  };
+  function msgFor(r){ return (MSG[r && r.reason] || MSG.error)(r||{}); }
+
+  // ── Google ──
+  var rendered=false;
+  function renderButton(){
+    if(rendered) return;
+    if(!(window.google && google.accounts && google.accounts.id)){ setTimeout(renderButton,150); return; }
+    google.accounts.id.initialize({ client_id:CLIENT_ID, callback:onGoogle });
+    var w=Math.min(318, Math.max(200, el('gbtn').offsetWidth || 300));
+    google.accounts.id.renderButton(el('gbtn'), { theme:'outline', size:'large', shape:'rectangular', text:'signin_with', logo_alignment:'left', width:w });
+    rendered=true;
+  }
+  function onGoogle(resp){
+    el('login').style.display='none'; el('splash').style.display='flex';
+    ask({ act:'google', credential:resp && resp.credential }).then(function(r){
+      if(r && r.ok && r.k){ store(r.k); openApp(r.k); }
+      else showLogin('google', msgFor(r), 'bad');
+    });
+  }
+
+  // ── Backup code ──
+  function codeVal(){ return (el('code').value||'').replace(/\s+/g,'').toUpperCase(); }
+  el('code').addEventListener('input', function(){
+    this.value=this.value.toUpperCase(); this.classList.remove('bad');
+    el('go').disabled = codeVal().length < 6;
+  });
+  el('code').addEventListener('keydown', function(e){ if(e.key==='Enter' && !el('go').disabled) submitCode(); });
+  el('go').addEventListener('click', submitCode);
+  var busy=false;
+  function submitCode(){
+    if(busy) return; busy=true;
+    var b=el('go'), orig=b.innerHTML;
+    b.disabled=true; b.classList.add('working'); b.innerHTML='<span class="spinner"></span>Checking…';
+    el('code').disabled=true;
+    ask({ act:'code', code:codeVal() }).then(function(r){
+      if(r && r.ok && r.k){ store(r.k); openApp(r.k); return; }
+      busy=false; b.classList.remove('working'); b.innerHTML=orig; b.disabled=false; el('code').disabled=false;
+      void b.offsetWidth; b.classList.add('fail'); setTimeout(function(){ b.classList.remove('fail'); }, 400);
+      if(r && r.reason==='badcode') el('code').classList.add('bad');
+      var box=el('cMsg'); box.className='panel bad'; box.innerHTML=msgFor(r);
+    });
+  }
+  el('toCode').addEventListener('click', function(){ showLogin('code'); });
+  el('toGoogle').addEventListener('click', function(){ showLogin('google'); });
+
+  // ── Start: a saved key is checked (about a second), then the app opens. With no
+  // answer (weak signal) the app opens anyway — it checks the key itself.
+  (function(){
+    var k=stored();
+    if(!k){ showLogin('google'); return; }
+    ask({ act:'check', k:k }, 8000).then(function(r){
+      if(r && r.ok) openApp(k);
+      else if(r && r.reason==='invalid'){ store(''); showLogin('google', 'Your sign-in on this phone is no longer valid. Sign in again to continue.', 'note'); }
+      else openApp(k);
+    });
+  })();
+</script>
+</body>
+</html>
